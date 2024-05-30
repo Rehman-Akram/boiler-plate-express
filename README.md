@@ -47,7 +47,7 @@ It includes following
 1. Install pre-reqs
 2. clone repo
 3. npm i 
-4. Run migrations // To create models 
-5. Run seeders // To seed default user and roles
+4. Run migrations // To create models  - check package.json for command
+5. Run seeders // To seed default user and roles - check package.json for command
 6. npm run start (normal)
 7. npm run start-dev (with nodemon)
