@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require('cookie-parser');
 const passport = require('./src/modules/auth/passport/passport.jwt.js');
-const { setMetaData } = require('./src/middlewares/index.js')
+const { setMetaData, errorHandler } = require('./src/middlewares/index.js')
 // import models
 require("./models/index.js")
 // import routes
@@ -32,7 +32,7 @@ app.use(authenticate);
 
 // Forwards the request to the appropriate route
 app.use('/', routes);
-
+app.use(errorHandler)
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}.`);
 });

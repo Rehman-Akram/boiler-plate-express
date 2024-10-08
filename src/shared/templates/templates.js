@@ -1,4 +1,4 @@
-const generateInviteEmail = (recipientName, message) => {
+const generateInviteEmail = (recipientName, message, inviteLink) => {
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -41,15 +41,15 @@ const generateInviteEmail = (recipientName, message) => {
           margin-top: 20px;
         }
         a, a:link, a:visited,a:hover{
-          color:#fff !important;
-          text-decoration:none;
+          color:#000 !important;
         }
       </style>
     </head>
     <body>
       <div class="container">
-        <h1>Hi ${recipientName},</h1>
-        <p>${message}</p>
+        <h1>Hi ${recipientName ? recipientName : 'User'},</h1>
+        <p>${message ? message : ''}</p>
+        <p>InviteLink: <a href="${inviteLink}">Link</a></p>
         <p>Looking forward to seeing you!</p>
         <p>Best regards,</p>
       </div>
@@ -58,4 +58,4 @@ const generateInviteEmail = (recipientName, message) => {
   `;
 }
 
-module.exports = {generateInviteEmail}
+module.exports = { generateInviteEmail }

@@ -1,13 +1,21 @@
+const bcrypt = require("bcrypt");
+
 function setLowerCaseTrim(column) {
-  return function(value) {
+  return function (value) {
     this.setDataValue(column, (value || "").toLowerCase().trim());
   };
 }
 
 function setTrim(column) {
-  return function(value) {
+  return function (value) {
     this.setDataValue(column, (value || "").trim());
   }
 }
 
-module.exports = { setLowerCaseTrim, setTrim };
+function generateInviteHash(str) {
+  const code = bcrypt.hashSync(str, parseInt(process.env.BCRYPT_WORK));
+  const forbiddenChars = /[\/?&]/g;
+  return code.replace(forbiddenChars, '');
+}
+
+module.exports = { setLowerCaseTrim, setTrim, generateInviteHash };

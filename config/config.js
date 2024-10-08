@@ -11,6 +11,8 @@ module.exports = {
     // "logging": true, // this will log all the queries in the console
   },
   port: process.env.PORT,
+  inviteExpiryTime: process.env.INVITE_EXPIRY_TIME,
+  frontEndHost: process.env.FRONTEND_HOST,
   get(key) {
     return process.env[key];
   },

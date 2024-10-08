@@ -5,12 +5,14 @@ const allModels = require('../models/index'); // getting all models
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up (queryInterface, Sequelize) {
+  async up(queryInterface, Sequelize) {
     try {
       for (const role of rolesData) {
+
         const existingRole = await allModels.roles.findOne({ where: { name: role.name } });
         if (!existingRole) {
-          await allModels.roles.create({name: role.name});
+          const permissions = await allModels.permissions.create({ ...role.permissions })
+          await allModels.roles.create({ name: role.name, permissionId: permissions.id });
           console.log(`>>>>>>>>>>>>>>>>ROLE: ${role.name} CREATED SUCCESSFULLY>>>>>>>>>>>>>>>>>>`);
         }
       }
@@ -19,6 +21,6 @@ module.exports = {
       console.log('error running seeder - rolesWithPermissions.', error);
       throw error
     }
-    
+
   },
 };

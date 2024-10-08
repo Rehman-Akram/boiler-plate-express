@@ -1,0 +1,111 @@
+const sequelize = require('../../../../database/index.js');
+const { generateInviteHash } = require('../../../shared/utils.js')
+const config = require('../../../../config/config.js')
+const { InviteStatus, UserStatus } = require('../../../constants/constants.js');
+const { generateInviteEmail } = require('../../../shared/templates/templates.js');
+const { sendEmail } = require('../../../shared/services/mailer.service.js');
+
+const generateInviteCode = (userId) => {
+    const inviteCode = generateInviteHash(userId);
+    const currentTime = new Date();
+    const expiresAt = new Date(
+        currentTime.getTime() + parseInt(config.inviteExpiryTime) * 1000,
+    );
+    return { inviteCode, expiresAt };
+}
+
+const create = async (newUser, currentUser) => {
+    try {
+        const { inviteCode, expiresAt } = generateInviteCode(newUser.id);
+
+        await sequelize.models.invites.create({
+            name: newUser.firstName,
+            email: newUser.email,
+            inviteCode,
+            inviteById: currentUser.id,
+            expiresAt,
+            userId: newUser.id,
+        });
+        // create and return invite link
+        return {
+            inviteLink: `${config.frontEndHost}/invites/verify-invite?code=${inviteCode}`,
+            inviteCode: inviteCode,
+        };
+    } catch (error) {
+        console.error(
+            `Error in createInvite of invite service where params: ${JSON.stringify({ newUser, currentUser })}`,
+        );
+        throw error;
+    }
+}
+
+const verifyCode = async (code, res, next) => {
+    try {
+        const invite = await sequelize.models.invites.findOne({
+            where: { inviteCode: code, isDeleted: false },
+            include: { model: sequelize.models.users },
+        });
+        if (invite && invite.expiresAt < new Date() && invite.status === InviteStatus.PENDING) {
+            throw { statusCode: 403, message: 'Invite code is expired' };
+        }
+        if (!invite || invite.expiresAt < new Date() || invite.status === InviteStatus.APPROVED) {
+            throw { statusCode: 400, message: "Invalid invite code" }
+        }
+        return invite;
+    } catch (error) {
+        console.error(`Error in verifyCode of InvitesService where code: ${code}`);
+        next(error)
+    }
+}
+
+const acceptInvite = async (req, res, next) => {
+    try {
+        const invite = await verifyCode(req.body.code, res, next);
+        if (!invite) return
+        invite.status = InviteStatus.APPROVED;
+        return await invite.save(invite);
+    } catch (error) {
+        console.error(`Error in acceptInvite of InvitesService where code: ${req.body.code}`);
+        next(error)
+    }
+}
+
+const acceptInviteUpdateUser = async (req, res, next) => {
+    try {
+        const { code, ...rest } = req.body;
+        const invite = await acceptInvite(req, res, next);
+        if (!invite) return
+        req.body.options = { id: invite.userId }
+        req.body.data = { ...rest, status: UserStatus.ACTIVE, emailVerified: true },
+            next()
+    } catch (error) {
+        console.error(`Error in acceptInviteUpdateUser of InvitesService where code: ${req.body.code}`);
+        next(error)
+    }
+}
+
+const resendInvite = async (user, req, res, next) => {
+    try {
+        const invite = await sequelize.models.invites.findOne({
+            where: { email: req.params.email, status: InviteStatus.PENDING, isDeleted: false },
+        });
+        if (!invite) {
+            throw { statusCode: 400, message: 'Invite not found' }
+        }
+        else {
+            const { inviteCode, expiresAt } = generateInviteCode(user.id);
+            invite.inviteCode = inviteCode
+            invite.expiresAt = expiresAt
+            await invite.save()
+            const inviteLink = `${config.frontEndHost}/invites/verify-invite?code=${inviteCode}`;
+            const template = generateInviteEmail(user.name, '', inviteLink);
+            sendEmail(user.email, "Invite Resend", template);
+            return true;
+        }
+    } catch (error) {
+        console.error(`Error in resendInvite of InvitesService where email: ${user.email}`);
+        next(error)
+    }
+}
+
+module.exports = { create, generateInviteCode, acceptInvite, acceptInviteUpdateUser, verifyCode, resendInvite }
