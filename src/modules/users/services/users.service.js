@@ -5,7 +5,16 @@ const bcrypt = require("bcrypt");
 const { sendEmail } = require('../../../shared/services/mailer.service.js')
 const { generateInviteEmail } = require('../../../shared/templates/templates.js')
 const inviteService = require('../../invites/services/invites.service.js')
-const permissionsService = require('../../permissions/services/permissions.service.js')
+const permissionsService = require('../../permissions/services/permissions.service.js');
+const eventEmitter = require('../../../shared/eventEmitter.js');
+
+
+eventEmitter.on('findUser', async (data) => {
+  const user = await findOneByOptions(data)
+  setTimeout(() =>
+    eventEmitter.emit('getUser', user)
+    , 500)
+})
 
 const findById = async (id) => {
   try {

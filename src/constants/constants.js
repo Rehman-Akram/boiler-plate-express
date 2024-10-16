@@ -1,5 +1,5 @@
 const CONSTANTS = {
-  PUBLIC_ROUTES: ['/auth/signup', '/auth/login', '/invites/accept-invite', '/resend-invite/:email', '/verify-code/:code'],
+  PUBLIC_ROUTES: ['/auth/signup', '/auth/login', '/invites/accept-invite', '/invites/resend-invite/:email', '/invites/verify-code/:code'],
   ROLES: {
     SUPER_ADMIN: 'Super Admin',
     ADMIN: 'Admin',

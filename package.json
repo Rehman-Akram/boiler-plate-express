@@ -36,6 +36,7 @@
     "nodemailer": "^6.9.11",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "path-to-regexp": "^8.2.0",
     "pg": "^8.11.3",
     "sequelize": "^6.37.1"
   },

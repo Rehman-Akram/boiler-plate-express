@@ -4,6 +4,7 @@ const config = require('../../../../config/config.js')
 const { InviteStatus, UserStatus } = require('../../../constants/constants.js');
 const { generateInviteEmail } = require('../../../shared/templates/templates.js');
 const { sendEmail } = require('../../../shared/services/mailer.service.js');
+const eventEmitter = require('../../../shared/eventEmitter.js')
 
 const generateInviteCode = (userId) => {
     const inviteCode = generateInviteHash(userId);
@@ -84,28 +85,45 @@ const acceptInviteUpdateUser = async (req, res, next) => {
     }
 }
 
-const resendInvite = async (user, req, res, next) => {
+const resendInvite = async (req, res, next) => {
     try {
-        const invite = await sequelize.models.invites.findOne({
-            where: { email: req.params.email, status: InviteStatus.PENDING, isDeleted: false },
+        eventEmitter.emit('findUser', { email: req.params.email, status: UserStatus.PENDING });
+        const getUserHandler = async (user) => {
+            try {
+                if (!user) {
+                    throw { statusCode: 400, message: 'User not pending' };
+                }
+                const invite = await sequelize.models.invites.findOne({
+                    where: { email: req.params.email, status: InviteStatus.PENDING, isDeleted: false },
+                });
+
+                if (!invite) {
+                    throw { statusCode: 400, message: 'Invite not found' };
+                } else {
+                    const { inviteCode, expiresAt } = generateInviteCode(user.id);
+                    invite.inviteCode = inviteCode;
+                    invite.expiresAt = expiresAt;
+                    await invite.save();
+                    const inviteLink = `${config.frontEndHost}/invites/verify-invite?code=${inviteCode}`;
+                    const template = generateInviteEmail(user.name, '', inviteLink);
+                    sendEmail(user.email, "Invite Resend", template);
+                    res.status(200).json({ data: true, status: 'successfull', statusCode: 200 });
+                }
+            } catch (error) {
+                console.error(`Error processing invite for email: ${req.params.email}`, error);
+                next(error);
+            }
+        };
+        eventEmitter.once('getUser', getUserHandler);
+        eventEmitter.once('error', (error) => {
+            console.error(`Error with eventEmitter while processing invite for email: ${req.params.email}`, error);
+            next(error);
         });
-        if (!invite) {
-            throw { statusCode: 400, message: 'Invite not found' }
-        }
-        else {
-            const { inviteCode, expiresAt } = generateInviteCode(user.id);
-            invite.inviteCode = inviteCode
-            invite.expiresAt = expiresAt
-            await invite.save()
-            const inviteLink = `${config.frontEndHost}/invites/verify-invite?code=${inviteCode}`;
-            const template = generateInviteEmail(user.name, '', inviteLink);
-            sendEmail(user.email, "Invite Resend", template);
-            return true;
-        }
     } catch (error) {
-        console.error(`Error in resendInvite of InvitesService where email: ${user.email}`);
-        next(error)
+        console.error(`Error in resendInvite of InvitesService where email: ${req.params.email}`, error);
+        next(error);
     }
-}
+};
+
 
 module.exports = { create, generateInviteCode, acceptInvite, acceptInviteUpdateUser, verifyCode, resendInvite }
